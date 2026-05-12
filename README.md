@@ -220,17 +220,21 @@ All endpoints live under `src/app/api/` and add 250–700ms of artificial latenc
 - **Dark mode** with system / manual toggle (animated segmented control)
 - **Animations & micro-interactions** — page-load fades, layout-id pill on theme toggle & nav, animated SVG risk meter, framer-staggered list reveals
 - **Polling simulation** — TanStack Query `refetchInterval` + drifting mock stats + live indicator
+- **Global search with command-palette UX** — `⌘K` / `Ctrl K` from anywhere, debounced dropdown with top 5 matches (avatar, customer, reference, badges, amount), keyboard navigation (↑/↓, Enter, Esc), substring highlighting, and a "View all results" fallback that pushes to the transactions page with the filter applied. See [Global search](#global-search) below.
 - **Unit tests** — Vitest + RTL, 20 tests across 5 files
 - **Docker setup** — multi-stage build, standalone output, non-root user
 
 ---
 
-## What I'd do next
+## Global search
 
-Given more than the two-day window:
+The header search ([src/components/layout/global-search.tsx](src/components/layout/global-search.tsx)) is a small command-palette built on top of TanStack Query:
 
-1. **Sortable columns + URL-synced filters.** The query state in `transactions/page.tsx` is already shaped as a single object — pushing it into `searchParams` is a small change that unlocks shareable links.
-2. **Real WebSocket transport.** The polling architecture is a drop-in stand-in; a `useEffect`-mounted WS subscription calling `queryClient.setQueryData` would replace the interval cleanly.
-3. **Server actions for mutations.** Marking a transaction as cleared / escalated belongs on the server. The shape is already in `activity[]` — wire a mutation that invalidates `queryKeys.transaction(id)`.
-4. **E2E coverage with Playwright** for the login → dashboard → drawer happy path.
-5. **Accessibility audit with axe-core** integrated into the test run.
+- Type 2+ characters → 250 ms debounce → top 5 transaction matches appear in a floating dropdown.
+- The dropdown row shows: avatar · highlighted customer name · highlighted reference · status & risk badges · relative time · amount.
+- **Keyboard:** `↑/↓` to navigate, `Enter` to activate, `Esc` to clear/close. Press **⌘K / Ctrl K** anywhere on the dashboard to focus the input.
+- Clicking a result navigates to `/dashboard/transactions?search=<q>&open=<id>` — the transactions page reads those params and auto-opens the drawer for that transaction.
+- The footer row "View all N results for *foo*" navigates to `/dashboard/transactions?search=<q>` for the full filterable table.
+- The dropdown's `useQuery` shares its cache key (`queryKeys.transactions(...)`) with the table, so navigating from the header to the transactions page is a cache hit — no second fetch.
+
+

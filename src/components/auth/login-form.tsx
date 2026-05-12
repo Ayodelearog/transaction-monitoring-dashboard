@@ -7,7 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { z } from "zod";
-import { Eye, EyeOff, Lock, Mail, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,18 +68,18 @@ export function LoginForm() {
       className="w-full max-w-md"
     >
       <div className="rounded-2xl border border-border bg-surface p-8 shadow-xl shadow-black/5">
-        <div className="mb-7 flex items-center gap-3">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Smartcomply
-            </p>
-            <h1 className="text-lg font-semibold text-foreground">
-              Sign in to your console
-            </h1>
-          </div>
+        <div className="mb-7 flex flex-col gap-5">
+          <Image
+            src="/smartcomply-blue.svg"
+            alt="Smartcomply"
+            width={176}
+            height={30}
+            priority
+            className="h-7 w-auto dark:brightness-0 dark:invert"
+          />
+          <h1 className="text-lg font-semibold text-foreground">
+            Sign in to your console
+          </h1>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>

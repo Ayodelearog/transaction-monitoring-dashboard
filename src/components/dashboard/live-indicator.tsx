@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,16 +11,13 @@ interface LiveIndicatorProps {
   className?: string;
 }
 
-const subscribe = (callback: () => void) => {
-  const interval = setInterval(callback, 1000);
-  return () => clearInterval(interval);
-};
-
-const getSnapshot = () => Date.now();
-const getServerSnapshot = () => 0;
-
 export function LiveIndicator({ isFetching, lastUpdated, className }: LiveIndicatorProps) {
-  const now = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [now, setNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
   const seconds =
     lastUpdated && now ? Math.max(0, Math.round((now - lastUpdated) / 1000)) : null;
 

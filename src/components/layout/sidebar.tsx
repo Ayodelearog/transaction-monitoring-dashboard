@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import {
   LayoutDashboard,
   Receipt,
   ShieldAlert,
   Users,
   Settings,
-  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,19 +47,19 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         <Link
           href="/dashboard"
-          className="flex items-center gap-2.5 px-2 mb-8"
+          className="flex flex-col items-start gap-5 px-2 mb-8"
           onClick={onClose}
         >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <ShieldCheck className="h-4.5 w-4.5" />
-          </span>
-          <span>
-            <span className="block text-sm font-semibold text-foreground leading-tight">
-              Smartcomply
-            </span>
-            <span className="block text-[10px] uppercase tracking-wider text-muted-foreground">
-              Transaction Monitor
-            </span>
+          <Image
+            src="/smartcomply-blue.svg"
+            alt="Smartcomply"
+            width={176}
+            height={30}
+            priority
+            className="h-5 w-auto dark:brightness-0 dark:invert"
+          />
+          <span className="block text-[10px] uppercase tracking-wider text-muted-foreground">
+            Transaction Monitor
           </span>
         </Link>
 

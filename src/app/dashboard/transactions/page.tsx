@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { LiveIndicator } from "@/components/dashboard/live-indicator";
 import { TransactionsFilters } from "@/components/transactions/transactions-filters";
@@ -18,13 +19,33 @@ interface FilterState {
 }
 
 export default function TransactionsPage() {
+  const searchParams = useSearchParams();
+  const urlSearch = searchParams.get("search") ?? "";
+  const urlOpen = searchParams.get("open");
+
   const [filters, setFilters] = useState<FilterState>({
-    search: "",
+    search: urlSearch,
     status: "all",
     risk: "all",
   });
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Transaction | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(urlOpen);
+  const [selectedFallback, setSelectedFallback] = useState<Transaction | null>(
+    null,
+  );
+  const [urlKey, setUrlKey] = useState(`${urlSearch}|${urlOpen ?? ""}`);
+
+  const currentUrlKey = `${urlSearch}|${urlOpen ?? ""}`;
+  if (urlKey !== currentUrlKey) {
+    setUrlKey(currentUrlKey);
+    setFilters((prev) =>
+      prev.search === urlSearch ? prev : { ...prev, search: urlSearch },
+    );
+    if (urlOpen) {
+      setSelectedId(urlOpen);
+      setSelectedFallback(null);
+    }
+  }
 
   const debouncedSearch = useDebouncedValue(filters.search, 300);
   const query = {
@@ -40,6 +61,16 @@ export default function TransactionsPage() {
   const handleFiltersChange = (next: FilterState) => {
     setFilters(next);
     setPage(1);
+  };
+
+  const handleSelect = (transaction: Transaction) => {
+    setSelectedId(transaction.id);
+    setSelectedFallback(transaction);
+  };
+
+  const handleCloseDrawer = () => {
+    setSelectedId(null);
+    setSelectedFallback(null);
   };
 
   return (
@@ -66,7 +97,7 @@ export default function TransactionsPage() {
         <TransactionsTable
           rows={data?.data ?? []}
           loading={isLoading}
-          onSelect={setSelected}
+          onSelect={handleSelect}
         />
         <div className="px-5 py-4 border-t border-border">
           <Pagination
@@ -79,9 +110,9 @@ export default function TransactionsPage() {
       </Card>
 
       <TransactionDrawer
-        transactionId={selected?.id ?? null}
-        fallback={selected}
-        onClose={() => setSelected(null)}
+        transactionId={selectedId}
+        fallback={selectedFallback}
+        onClose={handleCloseDrawer}
       />
     </div>
   );

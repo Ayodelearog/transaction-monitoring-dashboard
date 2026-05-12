@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { LogOut, Menu, Search, Bell } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { LogOut, Menu, Bell } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { GlobalSearch } from "./global-search";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuthStore } from "@/lib/store/auth";
 
@@ -30,13 +30,7 @@ export function Topbar({ onOpenMenu }: TopbarProps) {
         <Menu className="h-4 w-4" />
       </button>
 
-      <div className="hidden sm:flex flex-1 max-w-md">
-        <Input
-          placeholder="Search transactions, customers..."
-          leading={<Search className="h-4 w-4" />}
-          aria-label="Global search"
-        />
-      </div>
+      <GlobalSearch />
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
         <ThemeToggle />
