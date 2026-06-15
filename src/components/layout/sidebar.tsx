@@ -11,17 +11,25 @@ import {
   SlidersHorizontal,
   Users,
   Settings,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAlerts } from "@/hooks/use-alerts";
 
-const navItems = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  disabled?: boolean;
+}
+
+const navItems: NavItem[] = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/transactions", label: "Transactions", icon: Receipt },
   { href: "/dashboard/alerts", label: "Alerts", icon: ShieldAlert },
   { href: "/dashboard/customers", label: "Customers", icon: Users },
   { href: "/dashboard/rules", label: "Rules", icon: SlidersHorizontal },
-  { href: "#", label: "Settings", icon: Settings, disabled: true },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 interface SidebarProps {
