@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Receipt,
   ShieldAlert,
+  SlidersHorizontal,
   Users,
   Settings,
 } from "lucide-react";
@@ -19,6 +20,7 @@ const navItems = [
   { href: "/dashboard/transactions", label: "Transactions", icon: Receipt },
   { href: "/dashboard/alerts", label: "Alerts", icon: ShieldAlert },
   { href: "/dashboard/customers", label: "Customers", icon: Users },
+  { href: "/dashboard/rules", label: "Rules", icon: SlidersHorizontal },
   { href: "#", label: "Settings", icon: Settings, disabled: true },
 ];
 

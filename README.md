@@ -8,6 +8,8 @@ It also ships a full **alert / case-management workflow** — a triage queue of 
 
 A **Customers / KYC directory** rounds out the workspace: every customer aggregated from the transaction data with risk exposure, KYC status workflow, linked cases, and a KYC audit trail.
 
+A configurable **detection-rules engine** sits underneath it all: a catalog of tunable rules (toggle on/off, adjust thresholds) that evaluate transactions, drive which cases exist, surface as "triggered rules" on each case, and feed the AI triage context.
+
 ---
 
 ## Demo credentials
@@ -108,15 +110,16 @@ src/
 │   ├── transactions/                   # Table, Filters, Pagination, Drawer
 │   ├── alerts/                         # Queue table, filters, case drawer, AI panels
 │   ├── customers/                      # Directory table, filters, customer drawer
+│   ├── rules/                          # Detection-rule card
 │   ├── auth/                           # LoginForm
 │   └── providers/                      # ThemeProvider
 │
-├── hooks/                              # use-stats, use-transactions, use-alerts, use-customers, use-streaming, ...
+├── hooks/                              # use-stats, use-transactions, use-alerts, use-customers, use-rules, use-streaming, ...
 │
 ├── lib/
 │   ├── ai/                             # Claude prompts + context builder (AI Gateway)
 │   ├── api/                            # Typed fetch wrappers (auth, transactions, alerts)
-│   ├── mock/                           # Seeded RNG, data generator, mutable case store
+│   ├── mock/                           # Seeded RNG, data generator, case store, customer store, rules engine
 │   ├── query/                          # QueryClientProvider + query-key registry
 │   ├── store/                          # Zustand auth store
 │   ├── types/                          # Shared domain types
@@ -185,7 +188,7 @@ Theming uses **HSL CSS variables** set on `:root` and `.dark`, exposed to Tailwi
 
 ## Testing
 
-Thirty-nine unit tests across eight files cover the highest-leverage units:
+Forty-seven unit tests across nine files cover the highest-leverage units:
 
 | File                                          | Covers                                                          |
 | --------------------------------------------- | --------------------------------------------------------------- |
@@ -193,6 +196,7 @@ Thirty-nine unit tests across eight files cover the highest-leverage units:
 | `lib/mock/seed.test.ts`                       | Deterministic RNG + stats payload coherence                     |
 | `lib/mock/cases.test.ts`                      | Case derivation, queue counts/sorting/filtering, mutations      |
 | `lib/mock/customers.test.ts`                  | Customer aggregation, directory sorting/filtering, KYC mutations |
+| `lib/mock/rules.test.ts`                      | Rule evaluation, thresholds, disabled rules, match counts        |
 | `hooks/use-debounced-value.test.ts`           | Debounce behavior with fake timers                              |
 | `components/ui/badge.test.tsx`                | Tone classes, dot indicator                                     |
 | `components/ui/markdown.test.tsx`             | Headings, lists, inline bold, blank-line handling               |
@@ -227,6 +231,8 @@ All endpoints live under `src/app/api/` and add 250–700ms of artificial latenc
 | GET    | `/api/customers`               | Paginated customer directory + per-KYC-status counts   |
 | GET    | `/api/customers/[id]`          | Customer detail joined with transactions & cases       |
 | PATCH  | `/api/customers/[id]`          | Update a customer's KYC status                          |
+| GET    | `/api/rules`                   | Detection-rule catalog + per-rule match counts & coverage |
+| PATCH  | `/api/rules/[id]`              | Toggle a rule or adjust its threshold                   |
 
 ### `/api/transactions` query parameters
 
@@ -248,6 +254,7 @@ All endpoints live under `src/app/api/` and add 250–700ms of artificial latenc
 - **Alert / case management** — a triage queue with status workflow, assignment, notes, audit trail, and SAR escalation. See [Alerts & AI](#alerts--ai-assisted-case-management) below.
 - **AI-assisted triage (Claude)** — streaming risk assessments and SAR narratives via the Vercel AI SDK + AI Gateway.
 - **Customers / KYC directory** — aggregated customer profiles with a KYC review workflow, risk exposure, and cases linked back to the alert queue.
+- **Detection-rules engine** — a tunable catalog of rules (toggle, threshold) that explains *why* transactions are flagged. See [Detection rules](#detection-rules-engine) below.
 - **Global search with command-palette UX** — `⌘K` / `Ctrl K` from anywhere, debounced dropdown with top 5 matches (avatar, customer, reference, badges, amount), keyboard navigation (↑/↓, Enter, Esc), substring highlighting, and a "View all results" fallback that pushes to the transactions page with the filter applied. See [Global search](#global-search) below.
 - **Unit tests** — Vitest + RTL, 20 tests across 5 files
 - **Docker setup** — multi-stage build, standalone output, non-root user
@@ -307,4 +314,14 @@ The **Customers** workspace ([src/app/dashboard/customers/page.tsx](src/app/dash
 - **Directory** — KPI tiles (total / verified / pending / rejected), filter by KYC status and risk, search, and pagination. Each row shows KYC status, risk score, total volume, transaction count, and any open cases. The list is sorted by risk, then volume.
 - **Customer detail** ([src/components/customers/customer-drawer.tsx](src/components/customers/customer-drawer.tsx)) — profile, an **activity summary** (transactions, volume, flagged count), a **recent-transactions** list, and **linked cases that deep-link into the alert queue** (`/dashboard/alerts?open=<caseId>`).
 - **KYC workflow** — verify / mark pending / reject a customer; each change appends to the customer's **KYC audit trail**. Like cases, the change is written back into the TanStack Query cache and the directory is invalidated.
+
+---
+
+## Detection-rules engine
+
+The engine ([src/lib/mock/rules.ts](src/lib/mock/rules.ts)) is what makes flagging *causal* rather than random. It's a catalog of detection rules — `large-transfer`, `structuring`, `high-risk-jurisdiction`, `watchlisted-counterparty`, `unverified-high-value`, `rapid-velocity`, `automated-high-value` — each a small predicate over a transaction, with a category, a severity contribution, an optional tunable threshold, and a human-readable rationale.
+
+- **`evaluateTransaction(txn)`** runs every *enabled* rule and returns the matches. This powers three things at once: the **"Triggered rules"** section on a case (so an analyst sees exactly why it opened), the per-rule **match counts** and **coverage** stat, and the **AI triage context** (the model reasons over the fired rules, not just raw fields).
+- **The Rules page** ([src/app/dashboard/rules/page.tsx](src/app/dashboard/rules/page.tsx)) lists each rule as a card with a toggle, an editable threshold, its current match count, and severity/category badges. KPI tiles show total / active / critical rules and how many transactions the active set currently covers.
+- **Tuning is live.** Toggling a rule or changing a threshold (`PATCH /api/rules/[id]`) refetches the catalog and invalidates case views — so coverage, match counts, and the triggered-rules shown on cases all update to reflect the new configuration.
 

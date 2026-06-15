@@ -3,6 +3,7 @@ import type {
   CaseStatus,
   KycStatus,
   RiskLevel,
+  RuleCategory,
   TransactionStatus,
 } from "@/lib/types";
 
@@ -76,4 +77,13 @@ export const kycLabel: Record<KycStatus, string> = {
   verified: "Verified",
   pending: "Pending",
   rejected: "Rejected",
+};
+
+export const ruleCategoryLabel: Record<RuleCategory, string> = {
+  amount: "Amount",
+  velocity: "Velocity",
+  geography: "Geography",
+  counterparty: "Counterparty",
+  behavior: "Behavior",
+  kyc: "KYC",
 };

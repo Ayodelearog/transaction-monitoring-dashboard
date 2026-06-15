@@ -5,6 +5,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { motion } from "framer-motion";
 import {
   ArrowUpRight,
+  Radar,
   Receipt,
   ShieldAlert,
   UserCheck,
@@ -31,6 +32,7 @@ import {
   dispositionTone,
   riskLabel,
   riskTone,
+  ruleCategoryLabel,
 } from "@/lib/ui-mappings";
 import type { CaseRecord, CaseStatus } from "@/lib/types";
 
@@ -148,6 +150,31 @@ function CaseBody({ record }: { record: CaseRecord }) {
       </section>
 
       <AiAnalysisPanel caseId={record.id} />
+
+      {/* Triggered detection rules — why this case exists */}
+      {record.triggeredRules.length > 0 && (
+        <Section title="Triggered rules" icon={<Radar className="h-3.5 w-3.5" />}>
+          <ul className="space-y-2">
+            {record.triggeredRules.map((rule) => (
+              <li
+                key={rule.ruleId}
+                className="rounded-xl border border-border bg-surface px-3.5 py-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-foreground">{rule.name}</p>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Badge tone="neutral">{ruleCategoryLabel[rule.category]}</Badge>
+                    <Badge tone={riskTone[rule.severity]} dot>
+                      {riskLabel[rule.severity]}
+                    </Badge>
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{rule.rationale}</p>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
       {/* Linked transaction */}
       <Section title="Linked transaction" icon={<Receipt className="h-3.5 w-3.5" />}>

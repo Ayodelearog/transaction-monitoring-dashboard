@@ -29,6 +29,11 @@ export function buildCaseContext(record: CaseRecord): string {
   const notes = record.notes.length
     ? record.notes.map((n) => `- ${n.author}: ${n.body}`).join("\n")
     : "- (none)";
+  const firedRules = record.triggeredRules.length
+    ? record.triggeredRules
+        .map((r) => `- [${r.severity.toUpperCase()}] ${r.name}: ${r.rationale}`)
+        .join("\n")
+    : "- (none)";
 
   return [
     `CASE ${record.id} — ${record.title}`,
@@ -49,6 +54,9 @@ export function buildCaseContext(record: CaseRecord): string {
     "",
     "RISK INDICATORS",
     indicators || "- (none)",
+    "",
+    "DETECTION RULES TRIGGERED",
+    firedRules,
     "",
     "RECENT TRANSACTION HISTORY",
     history || "- (none)",

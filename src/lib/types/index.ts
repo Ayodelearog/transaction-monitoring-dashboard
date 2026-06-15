@@ -16,6 +16,45 @@ export type TransactionType =
 
 export type KycStatus = "verified" | "pending" | "rejected";
 
+export type RuleCategory =
+  | "amount"
+  | "velocity"
+  | "geography"
+  | "counterparty"
+  | "behavior"
+  | "kyc";
+
+/** A configurable detection rule in the monitoring engine. */
+export interface DetectionRule {
+  id: string;
+  name: string;
+  description: string;
+  category: RuleCategory;
+  /** Risk contribution when the rule fires. */
+  severity: RiskLevel;
+  enabled: boolean;
+  /** Optional tunable threshold (e.g. amount in USD, txns per window). */
+  threshold?: number;
+  thresholdUnit?: string;
+  thresholdLabel?: string;
+  /** Rationale surfaced when the rule fires against a transaction. */
+  rationale: string;
+}
+
+/** A rule's metadata plus how many transactions it currently matches. */
+export interface DetectionRuleWithMatches extends DetectionRule {
+  matchCount: number;
+}
+
+/** A rule that fired against a specific transaction. */
+export interface RuleMatch {
+  ruleId: string;
+  name: string;
+  category: RuleCategory;
+  severity: RiskLevel;
+  rationale: string;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -138,6 +177,8 @@ export interface Case {
 /** A case joined with its originating transaction, as served by the API. */
 export interface CaseRecord extends Case {
   transaction: Transaction;
+  /** Detection rules the linked transaction currently triggers. */
+  triggeredRules: RuleMatch[];
 }
 
 export interface CasesQuery {

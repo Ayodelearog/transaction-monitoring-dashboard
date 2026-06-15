@@ -11,6 +11,7 @@ import type {
   Transaction,
 } from "@/lib/types";
 import { getMockTransactions } from "./data";
+import { evaluateTransaction } from "./rules";
 import { SeededRng } from "./seed";
 
 const ANALYSTS = [
@@ -138,11 +139,13 @@ function transactionFor(c: Case): Transaction {
 
 /** Snapshot a case (copying mutable arrays) joined with its transaction. */
 function join(c: Case): CaseRecord {
+  const transaction = transactionFor(c);
   return {
     ...c,
     notes: [...c.notes],
     audit: [...c.audit],
-    transaction: transactionFor(c),
+    transaction,
+    triggeredRules: evaluateTransaction(transaction),
   };
 }
 
