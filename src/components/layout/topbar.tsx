@@ -21,7 +21,7 @@ export function Topbar({ onOpenMenu }: TopbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/80 backdrop-blur px-4 sm:px-6 h-14">
+    <header className="no-print sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/80 backdrop-blur px-4 sm:px-6 h-14">
       <button
         onClick={onOpenMenu}
         className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"

@@ -118,6 +118,7 @@ src/
 │
 ├── lib/
 │   ├── ai/                             # Claude prompts + context builder (AI Gateway)
+│   ├── export/                         # CSV serializer + per-dataset columns
 │   ├── api/                            # Typed fetch wrappers (auth, transactions, alerts)
 │   ├── mock/                           # Seeded RNG, data generator, case store, customer store, rules engine
 │   ├── query/                          # QueryClientProvider + query-key registry
@@ -188,7 +189,7 @@ Theming uses **HSL CSS variables** set on `:root` and `.dark`, exposed to Tailwi
 
 ## Testing
 
-Forty-seven unit tests across nine files cover the highest-leverage units:
+Fifty-one unit tests across ten files cover the highest-leverage units:
 
 | File                                          | Covers                                                          |
 | --------------------------------------------- | --------------------------------------------------------------- |
@@ -197,6 +198,7 @@ Forty-seven unit tests across nine files cover the highest-leverage units:
 | `lib/mock/cases.test.ts`                      | Case derivation, queue counts/sorting/filtering, mutations      |
 | `lib/mock/customers.test.ts`                  | Customer aggregation, directory sorting/filtering, KYC mutations |
 | `lib/mock/rules.test.ts`                      | Rule evaluation, thresholds, disabled rules, match counts        |
+| `lib/export/csv.test.ts`                      | CSV serialization, RFC-4180 escaping, empty datasets             |
 | `hooks/use-debounced-value.test.ts`           | Debounce behavior with fake timers                              |
 | `components/ui/badge.test.tsx`                | Tone classes, dot indicator                                     |
 | `components/ui/markdown.test.tsx`             | Headings, lists, inline bold, blank-line handling               |
@@ -233,6 +235,7 @@ All endpoints live under `src/app/api/` and add 250–700ms of artificial latenc
 | PATCH  | `/api/customers/[id]`          | Update a customer's KYC status                          |
 | GET    | `/api/rules`                   | Detection-rule catalog + per-rule match counts & coverage |
 | PATCH  | `/api/rules/[id]`              | Toggle a rule or adjust its threshold                   |
+| GET    | `/api/export/[dataset]`        | Download `transactions` / `alerts` / `customers` as filtered CSV |
 
 ### `/api/transactions` query parameters
 
@@ -255,6 +258,7 @@ All endpoints live under `src/app/api/` and add 250–700ms of artificial latenc
 - **AI-assisted triage (Claude)** — streaming risk assessments and SAR narratives via the Vercel AI SDK + AI Gateway.
 - **Customers / KYC directory** — aggregated customer profiles with a KYC review workflow, risk exposure, and cases linked back to the alert queue.
 - **Detection-rules engine** — a tunable catalog of rules (toggle, threshold) that explains *why* transactions are flagged. See [Detection rules](#detection-rules-engine) below.
+- **Reporting & exports** — server-generated, filter-aware CSV exports for transactions/cases/customers, plus a printable compliance summary. See [Reporting & exports](#reporting--exports) below.
 - **Global search with command-palette UX** — `⌘K` / `Ctrl K` from anywhere, debounced dropdown with top 5 matches (avatar, customer, reference, badges, amount), keyboard navigation (↑/↓, Enter, Esc), substring highlighting, and a "View all results" fallback that pushes to the transactions page with the filter applied. See [Global search](#global-search) below.
 - **Unit tests** — Vitest + RTL, 20 tests across 5 files
 - **Docker setup** — multi-stage build, standalone output, non-root user
@@ -324,4 +328,13 @@ The engine ([src/lib/mock/rules.ts](src/lib/mock/rules.ts)) is what makes flaggi
 - **`evaluateTransaction(txn)`** runs every *enabled* rule and returns the matches. This powers three things at once: the **"Triggered rules"** section on a case (so an analyst sees exactly why it opened), the per-rule **match counts** and **coverage** stat, and the **AI triage context** (the model reasons over the fired rules, not just raw fields).
 - **The Rules page** ([src/app/dashboard/rules/page.tsx](src/app/dashboard/rules/page.tsx)) lists each rule as a card with a toggle, an editable threshold, its current match count, and severity/category badges. KPI tiles show total / active / critical rules and how many transactions the active set currently covers.
 - **Tuning is live.** Toggling a rule or changing a threshold (`PATCH /api/rules/[id]`) refetches the catalog and invalidates case views — so coverage, match counts, and the triggered-rules shown on cases all update to reflect the new configuration.
+
+---
+
+## Reporting & exports
+
+The **Reports** workspace ([src/app/dashboard/reports/page.tsx](src/app/dashboard/reports/page.tsx)) provides two kinds of output.
+
+- **CSV exports** — `GET /api/export/[dataset]` serializes `transactions`, `alerts` (cases), or `customers` to CSV server-side, honoring the same query filters as the list endpoints (so "Export" on the Transactions or Alerts page downloads exactly the filtered result set, not just the current page). A small RFC-4180 serializer ([src/lib/export/csv.ts](src/lib/export/csv.ts)) with typed per-dataset column definitions handles escaping; the route sets `Content-Type: text/csv` and a dated `Content-Disposition` filename. The list filters were refactored into reusable `filterTransactions` / `queryCases` / `queryCustomers` functions so the table routes and the export route share one code path.
+- **Printable compliance summary** — an on-screen report (KPIs, risk distribution, case-queue breakdown, detection coverage) with a **Print / Save as PDF** button. Print styles ([src/app/globals.css](src/app/globals.css)) hide the app chrome (`.no-print`) so the browser's print dialog produces a clean, standalone PDF — no PDF dependency required.
 

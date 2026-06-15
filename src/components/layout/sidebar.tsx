@@ -10,6 +10,7 @@ import {
   ShieldAlert,
   SlidersHorizontal,
   Users,
+  FileText,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard/alerts", label: "Alerts", icon: ShieldAlert },
   { href: "/dashboard/customers", label: "Customers", icon: Users },
   { href: "/dashboard/rules", label: "Rules", icon: SlidersHorizontal },
+  { href: "/dashboard/reports", label: "Reports", icon: FileText },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
@@ -55,7 +57,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       )}
       <aside
         className={cn(
-          "fixed lg:sticky top-0 z-40 h-dvh w-64 shrink-0 border-r border-border bg-surface px-4 py-5 transition-transform duration-200",
+          "no-print fixed lg:sticky top-0 z-40 h-dvh w-64 shrink-0 border-r border-border bg-surface px-4 py-5 transition-transform duration-200",
           "lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}

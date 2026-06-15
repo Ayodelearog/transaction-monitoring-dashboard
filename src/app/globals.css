@@ -102,3 +102,17 @@ body {
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--border)) transparent;
 }
+
+/* Print: hide app chrome and anything marked no-print, so a report prints clean. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .print-area {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
