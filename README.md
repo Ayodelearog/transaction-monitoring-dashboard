@@ -4,6 +4,12 @@ A responsive transaction monitoring console for compliance analysts. Built as th
 
 The app simulates a live AML / fraud monitoring workspace: KPI metrics, weekly volume, risk distribution, and a searchable, filterable transactions table with a detail drawer that breaks down customer, risk, history, and activity timeline.
 
+It also ships a full **alert / case-management workflow** — a triage queue of compliance cases derived from flagged and high-risk transactions, each with status workflow, assignment, investigator notes, an audit trail, and SAR (Suspicious Activity Report) escalation. An **AI assistant (Claude, via the Vercel AI Gateway)** drafts the risk assessment and the SAR narrative, streaming token-by-token, with the analyst keeping the final decision.
+
+A **Customers / KYC directory** rounds out the workspace: every customer aggregated from the transaction data with risk exposure, KYC status workflow, linked cases, and a KYC audit trail.
+
+A configurable **detection-rules engine** sits underneath it all: a catalog of tunable rules (toggle on/off, adjust thresholds) that evaluate transactions, drive which cases exist, surface as "triggered rules" on each case, and feed the AI triage context.
+
 ---
 
 ## Demo credentials
@@ -25,6 +31,7 @@ Password: Compliance123!
 | Language             | **TypeScript** (strict)                                  |
 | Styling              | **Tailwind CSS v4** with HSL design tokens               |
 | Server state         | **TanStack Query v5** (polling, caching, devtools)       |
+| AI                   | **Vercel AI SDK** (`ai`) + **AI Gateway** → **Claude**, streamed |
 | Client / auth state  | **Zustand** with `persist` middleware (localStorage)     |
 | Forms & validation   | **react-hook-form** + **Zod** (`@hookform/resolvers`)    |
 | Charts               | **Recharts** (Area chart with gradients)                 |
@@ -42,22 +49,25 @@ Password: Compliance123!
 # 1. Install
 npm install
 
-# 2. Dev server (http://localhost:3000)
+# 2. (Optional) enable the AI features — copy the example env and add a key
+cp .env.example .env.local   # then set AI_GATEWAY_API_KEY
+
+# 3. Dev server (http://localhost:3000)
 npm run dev
 
-# 3. Production build + serve
+# 4. Production build + serve
 npm run build && npm start
 
-# 4. Run the test suite (one-shot)
+# 5. Run the test suite (one-shot)
 npm test
 
-# 5. Tests in watch mode
+# 6. Tests in watch mode
 npm run test:watch
 
-# 6. Typecheck
+# 7. Typecheck
 npm run typecheck
 
-# 7. Lint
+# 8. Lint
 npm run lint
 ```
 
@@ -89,7 +99,7 @@ src/
 │   │       ├── route.ts                # List, search, filter, paginate
 │   │       └── [id]/route.ts           # Single transaction
 │   ├── layout.tsx                      # Theme + Query providers
-│   ├── page.tsx                        # Root redirector (auth-aware)
+│   ├── page.tsx                        # Public landing page (auth-aware CTA)
 │   └── globals.css                     # Design tokens (light + dark)
 │
 ├── components/
@@ -98,14 +108,18 @@ src/
 │   ├── layout/                         # Sidebar, Topbar, ThemeToggle, AppShell
 │   ├── dashboard/                      # KpiCard, VolumeChart, RiskDistribution, LiveIndicator
 │   ├── transactions/                   # Table, Filters, Pagination, Drawer
+│   ├── alerts/                         # Queue table, filters, case drawer, AI panels
+│   ├── customers/                      # Directory table, filters, customer drawer
+│   ├── rules/                          # Detection-rule card
 │   ├── auth/                           # LoginForm
 │   └── providers/                      # ThemeProvider
 │
-├── hooks/                              # use-stats, use-transactions, use-debounced-value
+├── hooks/                              # use-stats, use-transactions, use-alerts, use-customers, use-rules, use-streaming, ...
 │
 ├── lib/
-│   ├── api/                            # Typed fetch wrappers (auth, transactions)
-│   ├── mock/                           # Seeded RNG + deterministic data generator
+│   ├── ai/                             # Claude prompts + context builder (AI Gateway)
+│   ├── api/                            # Typed fetch wrappers (auth, transactions, alerts)
+│   ├── mock/                           # Seeded RNG, data generator, case store, customer store, rules engine
 │   ├── query/                          # QueryClientProvider + query-key registry
 │   ├── store/                          # Zustand auth store
 │   ├── types/                          # Shared domain types
@@ -140,7 +154,7 @@ Mocked, but realistic in shape:
 2. On 200, the payload is stored in the Zustand `useAuthStore` (token + user).
 3. The persist middleware writes to `localStorage` so refresh keeps you signed in.
 4. The `AppShell` (dashboard layout) waits for hydration and redirects to `/login` if there is no user.
-5. The root `/` route is itself a tiny redirector: it sends you to `/dashboard` or `/login` based on the same hydrated store.
+5. The root `/` route is a public marketing landing page; its primary CTA reads the hydrated store to send you to `/dashboard` (if signed in) or `/login`.
 
 This is intentionally client-side because the brief allowed mocked auth — wiring middleware-based gating would be the next step for a real backend.
 
@@ -174,14 +188,18 @@ Theming uses **HSL CSS variables** set on `:root` and `.dark`, exposed to Tailwi
 
 ## Testing
 
-Twenty unit tests across five files cover the highest-leverage units:
+Forty-seven unit tests across nine files cover the highest-leverage units:
 
 | File                                          | Covers                                                          |
 | --------------------------------------------- | --------------------------------------------------------------- |
 | `lib/utils.test.ts`                           | `cn` / `tailwind-merge` behavior, currency / number / initials  |
 | `lib/mock/seed.test.ts`                       | Deterministic RNG + stats payload coherence                     |
+| `lib/mock/cases.test.ts`                      | Case derivation, queue counts/sorting/filtering, mutations      |
+| `lib/mock/customers.test.ts`                  | Customer aggregation, directory sorting/filtering, KYC mutations |
+| `lib/mock/rules.test.ts`                      | Rule evaluation, thresholds, disabled rules, match counts        |
 | `hooks/use-debounced-value.test.ts`           | Debounce behavior with fake timers                              |
 | `components/ui/badge.test.tsx`                | Tone classes, dot indicator                                     |
+| `components/ui/markdown.test.tsx`             | Headings, lists, inline bold, blank-line handling               |
 | `components/transactions/pagination.test.tsx` | Range rendering, disabled boundaries, click handlers            |
 
 ```bash
@@ -202,6 +220,19 @@ All endpoints live under `src/app/api/` and add 250–700ms of artificial latenc
 | GET    | `/api/stats`                   | Dashboard KPIs + weekly volume + risk distribution     |
 | GET    | `/api/transactions`            | Paginated, searchable, filterable list                 |
 | GET    | `/api/transactions/[id]`       | Single transaction with full timeline                  |
+| GET    | `/api/alerts`                  | Paginated case queue + per-status counts               |
+| GET    | `/api/alerts/[id]`             | Single case joined with its transaction                |
+| PATCH  | `/api/alerts/[id]`             | Update case status and/or assignee                     |
+| POST   | `/api/alerts/[id]/notes`       | Append an investigator note                            |
+| POST   | `/api/alerts/[id]/escalate`    | Escalate the case to SAR                               |
+| POST   | `/api/alerts/[id]/sar`         | Save / approve a SAR narrative                         |
+| POST   | `/api/alerts/[id]/analyze`     | **Streams** an AI risk assessment (Claude)             |
+| POST   | `/api/alerts/[id]/sar/draft`   | **Streams** an AI-drafted SAR narrative (Claude)       |
+| GET    | `/api/customers`               | Paginated customer directory + per-KYC-status counts   |
+| GET    | `/api/customers/[id]`          | Customer detail joined with transactions & cases       |
+| PATCH  | `/api/customers/[id]`          | Update a customer's KYC status                          |
+| GET    | `/api/rules`                   | Detection-rule catalog + per-rule match counts & coverage |
+| PATCH  | `/api/rules/[id]`              | Toggle a rule or adjust its threshold                   |
 
 ### `/api/transactions` query parameters
 
@@ -220,6 +251,10 @@ All endpoints live under `src/app/api/` and add 250–700ms of artificial latenc
 - **Dark mode** with system / manual toggle (animated segmented control)
 - **Animations & micro-interactions** — page-load fades, layout-id pill on theme toggle & nav, animated SVG risk meter, framer-staggered list reveals
 - **Polling simulation** — TanStack Query `refetchInterval` + drifting mock stats + live indicator
+- **Alert / case management** — a triage queue with status workflow, assignment, notes, audit trail, and SAR escalation. See [Alerts & AI](#alerts--ai-assisted-case-management) below.
+- **AI-assisted triage (Claude)** — streaming risk assessments and SAR narratives via the Vercel AI SDK + AI Gateway.
+- **Customers / KYC directory** — aggregated customer profiles with a KYC review workflow, risk exposure, and cases linked back to the alert queue.
+- **Detection-rules engine** — a tunable catalog of rules (toggle, threshold) that explains *why* transactions are flagged. See [Detection rules](#detection-rules-engine) below.
 - **Global search with command-palette UX** — `⌘K` / `Ctrl K` from anywhere, debounced dropdown with top 5 matches (avatar, customer, reference, badges, amount), keyboard navigation (↑/↓, Enter, Esc), substring highlighting, and a "View all results" fallback that pushes to the transactions page with the filter applied. See [Global search](#global-search) below.
 - **Unit tests** — Vitest + RTL, 20 tests across 5 files
 - **Docker setup** — multi-stage build, standalone output, non-root user
@@ -237,4 +272,56 @@ The header search ([src/components/layout/global-search.tsx](src/components/layo
 - The footer row "View all N results for *foo*" navigates to `/dashboard/transactions?search=<q>` for the full filterable table.
 - The dropdown's `useQuery` shares its cache key (`queryKeys.transactions(...)`) with the table, so navigating from the header to the transactions page is a cache hit — no second fetch.
 
+---
+
+## Alerts & AI-assisted case management
+
+The **Alerts** workspace ([src/app/dashboard/alerts/page.tsx](src/app/dashboard/alerts/page.tsx)) turns the monitoring dashboard into a working investigations tool.
+
+### The queue
+
+- Cases are **derived** from the transaction data: any flagged / under-review transaction, or anything high- or critical-risk, opens a case ([src/lib/mock/cases.ts](src/lib/mock/cases.ts)).
+- The queue is sorted by priority, filterable by status and priority, searchable, and paginated. Four KPI tiles count cases by status (Open / Investigating / Escalated / Closed), and the sidebar **Alerts** badge shows the live count of active cases.
+
+### The case view
+
+Opening a case (drawer, [src/components/alerts/case-drawer.tsx](src/components/alerts/case-drawer.tsx)) exposes the full analyst workflow:
+
+- **Status workflow** — `open → investigating → escalated → closed`, plus assignment to an analyst.
+- **Escalate to SAR** — one click flips the case to escalated and marks the disposition `sar_filed`.
+- **Investigator notes** — free-text notes, each appended to the case.
+- **Audit trail** — every status change, assignment, note, and SAR action is recorded as an immutable timeline entry.
+
+Mutations go through a small **mutable in-memory store** so actions persist for the lifetime of the dev server (the brief allowed mocked data; this keeps the demo stateful without a database). TanStack Query mutations write the updated case back into the cache and invalidate the queue, so the UI stays in sync.
+
+### The AI layer
+
+Two features call **Claude through the Vercel AI Gateway** ([src/lib/ai/triage.ts](src/lib/ai/triage.ts)), both **streamed token-by-token**:
+
+- **AI triage assistant** (`/api/alerts/[id]/analyze`) — reads the transaction, customer, risk indicators, history, and notes, then drafts a structured risk assessment with a recommended disposition.
+- **AI SAR drafting** (`/api/alerts/[id]/sar/draft`) — drafts the regulatory narrative, which the analyst can edit before saving a draft or approving the filing.
+
+Both routes use `streamText(...).toTextStreamResponse()`; the client reads the response body as a stream ([src/hooks/use-streaming.ts](src/hooks/use-streaming.ts)) and renders it live through a tiny dependency-free markdown component. The analyst always makes the final decision — the AI assists, it doesn't decide.
+
+> **No key? Still works.** Without `AI_GATEWAY_API_KEY` the app runs normally; only the two AI actions return a friendly "AI is not configured" message (the routes guard on credentials and respond `503`). See [.env.example](.env.example).
+
+---
+
+## Customers & KYC
+
+The **Customers** workspace ([src/app/dashboard/customers/page.tsx](src/app/dashboard/customers/page.tsx)) is a directory built by aggregating the transaction data per customer ([src/lib/mock/customers.ts](src/lib/mock/customers.ts)).
+
+- **Directory** — KPI tiles (total / verified / pending / rejected), filter by KYC status and risk, search, and pagination. Each row shows KYC status, risk score, total volume, transaction count, and any open cases. The list is sorted by risk, then volume.
+- **Customer detail** ([src/components/customers/customer-drawer.tsx](src/components/customers/customer-drawer.tsx)) — profile, an **activity summary** (transactions, volume, flagged count), a **recent-transactions** list, and **linked cases that deep-link into the alert queue** (`/dashboard/alerts?open=<caseId>`).
+- **KYC workflow** — verify / mark pending / reject a customer; each change appends to the customer's **KYC audit trail**. Like cases, the change is written back into the TanStack Query cache and the directory is invalidated.
+
+---
+
+## Detection-rules engine
+
+The engine ([src/lib/mock/rules.ts](src/lib/mock/rules.ts)) is what makes flagging *causal* rather than random. It's a catalog of detection rules — `large-transfer`, `structuring`, `high-risk-jurisdiction`, `watchlisted-counterparty`, `unverified-high-value`, `rapid-velocity`, `automated-high-value` — each a small predicate over a transaction, with a category, a severity contribution, an optional tunable threshold, and a human-readable rationale.
+
+- **`evaluateTransaction(txn)`** runs every *enabled* rule and returns the matches. This powers three things at once: the **"Triggered rules"** section on a case (so an analyst sees exactly why it opened), the per-rule **match counts** and **coverage** stat, and the **AI triage context** (the model reasons over the fired rules, not just raw fields).
+- **The Rules page** ([src/app/dashboard/rules/page.tsx](src/app/dashboard/rules/page.tsx)) lists each rule as a card with a toggle, an editable threshold, its current match count, and severity/category badges. KPI tiles show total / active / critical rules and how many transactions the active set currently covers.
+- **Tuning is live.** Toggling a rule or changing a threshold (`PATCH /api/rules/[id]`) refetches the catalog and invalidates case views — so coverage, match counts, and the triggered-rules shown on cases all update to reflect the new configuration.
 

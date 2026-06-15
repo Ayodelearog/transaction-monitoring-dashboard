@@ -8,16 +8,19 @@ import {
   LayoutDashboard,
   Receipt,
   ShieldAlert,
+  SlidersHorizontal,
   Users,
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAlerts } from "@/hooks/use-alerts";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/transactions", label: "Transactions", icon: Receipt },
-  { href: "#", label: "Alerts", icon: ShieldAlert, disabled: true, badge: "12" },
-  { href: "#", label: "Customers", icon: Users, disabled: true },
+  { href: "/dashboard/alerts", label: "Alerts", icon: ShieldAlert },
+  { href: "/dashboard/customers", label: "Customers", icon: Users },
+  { href: "/dashboard/rules", label: "Rules", icon: SlidersHorizontal },
   { href: "#", label: "Settings", icon: Settings, disabled: true },
 ];
 
@@ -28,6 +31,10 @@ interface SidebarProps {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { data: alerts } = useAlerts({ pageSize: 1 });
+  const activeCases = alerts
+    ? alerts.counts.open + alerts.counts.investigating + alerts.counts.escalated
+    : 0;
 
   return (
     <>
@@ -69,6 +76,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </p>
           {navItems.map((item) => {
             const Icon = item.icon;
+            const badge =
+              item.href === "/dashboard/alerts" && activeCases > 0
+                ? String(activeCases)
+                : undefined;
             const isActive =
               !item.disabled &&
               (pathname === item.href ||
@@ -100,9 +111,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 )}
                 <Icon className="relative h-4 w-4 shrink-0" />
                 <span className="relative flex-1">{item.label}</span>
-                {item.badge && (
+                {badge && (
                   <span className="relative rounded-full bg-danger/10 px-1.5 py-0.5 text-[10px] font-semibold text-danger">
-                    {item.badge}
+                    {badge}
                   </span>
                 )}
               </Link>
