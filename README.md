@@ -99,7 +99,7 @@ src/
 │   │       ├── route.ts                # List, search, filter, paginate
 │   │       └── [id]/route.ts           # Single transaction
 │   ├── layout.tsx                      # Theme + Query providers
-│   ├── page.tsx                        # Root redirector (auth-aware)
+│   ├── page.tsx                        # Public landing page (auth-aware CTA)
 │   └── globals.css                     # Design tokens (light + dark)
 │
 ├── components/
@@ -154,7 +154,7 @@ Mocked, but realistic in shape:
 2. On 200, the payload is stored in the Zustand `useAuthStore` (token + user).
 3. The persist middleware writes to `localStorage` so refresh keeps you signed in.
 4. The `AppShell` (dashboard layout) waits for hydration and redirects to `/login` if there is no user.
-5. The root `/` route is itself a tiny redirector: it sends you to `/dashboard` or `/login` based on the same hydrated store.
+5. The root `/` route is a public marketing landing page; its primary CTA reads the hydrated store to send you to `/dashboard` (if signed in) or `/login`.
 
 This is intentionally client-side because the brief allowed mocked auth — wiring middleware-based gating would be the next step for a real backend.
 
