@@ -10,6 +10,7 @@ import { Pagination } from "@/components/transactions/pagination";
 import { AlertsFilters, type AlertFilters } from "@/components/alerts/alerts-filters";
 import { AlertsTable } from "@/components/alerts/alerts-table";
 import { CaseDrawer } from "@/components/alerts/case-drawer";
+import { ExportButton } from "@/components/ui/export-button";
 import { useAlerts } from "@/hooks/use-alerts";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import type { CaseRecord } from "@/lib/types";
@@ -68,7 +69,17 @@ export default function AlertsPage() {
             Triage and resolve compliance cases with an AI assistant in the loop.
           </p>
         </div>
-        <LiveIndicator isFetching={isFetching} lastUpdated={dataUpdatedAt} />
+        <div className="flex items-center gap-3">
+          <ExportButton
+            dataset="alerts"
+            params={{
+              search: debouncedSearch,
+              status: filters.status,
+              priority: filters.priority,
+            }}
+          />
+          <LiveIndicator isFetching={isFetching} lastUpdated={dataUpdatedAt} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

@@ -78,18 +78,13 @@ const RISK_ORDER: Record<RiskLevel, number> = {
   low: 3,
 };
 
-export function listCustomers(query: CustomersQuery = {}): PaginatedCustomers {
+/** Filter and sort the customer directory (no pagination). */
+export function queryCustomers(query: CustomersQuery = {}): CustomerRecord[] {
   const { search = "", kyc = "all", risk = "all" } = query;
-  const page = Math.max(1, query.page ?? 1);
-  const pageSize = Math.max(1, Math.min(50, query.pageSize ?? 10));
   const term = search.toLowerCase().trim();
 
-  const all = [...db().values()].map((e) => e.record);
-
-  const counts: Record<KycStatus, number> = { verified: 0, pending: 0, rejected: 0 };
-  for (const c of all) counts[c.kycStatus]++;
-
-  const filtered = all
+  return [...db().values()]
+    .map((e) => e.record)
     .filter((c) => {
       if (kyc !== "all" && c.kycStatus !== kyc) return false;
       if (risk !== "all" && c.riskLevel !== risk) return false;
@@ -106,7 +101,16 @@ export function listCustomers(query: CustomersQuery = {}): PaginatedCustomers {
       }
       return b.totalVolume - a.totalVolume;
     });
+}
 
+export function listCustomers(query: CustomersQuery = {}): PaginatedCustomers {
+  const page = Math.max(1, query.page ?? 1);
+  const pageSize = Math.max(1, Math.min(50, query.pageSize ?? 10));
+
+  const counts: Record<KycStatus, number> = { verified: 0, pending: 0, rejected: 0 };
+  for (const e of db().values()) counts[e.record.kycStatus]++;
+
+  const filtered = queryCustomers(query);
   const start = (page - 1) * pageSize;
   return {
     data: filtered.slice(start, start + pageSize),

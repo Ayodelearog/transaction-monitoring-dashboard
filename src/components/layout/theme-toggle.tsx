@@ -1,9 +1,22 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun, Monitor } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+
+// Hydration detector: `false` on the server and during the first client render
+// (matching SSR), then `true` after hydration commits. Stable primitive
+// snapshots, so no referential-stability or hydration-mismatch issues.
+const emptySubscribe = () => () => {};
+function useMounted() {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
+}
 
 const options = [
   { value: "light", icon: Sun, label: "Light theme" },
@@ -12,11 +25,11 @@ const options = [
 ] as const;
 
 export function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const mounted = resolvedTheme !== undefined;
+  const { theme, setTheme } = useTheme();
+  const mounted = useMounted();
 
   if (!mounted) {
-    return <div className="h-9 w-[108px] rounded-full border border-border bg-surface" />;
+    return <div className="h-9 w-27 rounded-full border border-border bg-surface" />;
   }
 
   return (

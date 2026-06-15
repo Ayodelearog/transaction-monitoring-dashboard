@@ -5,6 +5,7 @@ import type {
   RiskIndicator,
   RiskLevel,
   Transaction,
+  TransactionsQuery,
   TransactionStatus,
   TransactionType,
 } from "@/lib/types";
@@ -234,6 +235,22 @@ export function getMockTransactions(): Transaction[] {
   );
   cache = { generatedAt: Date.now(), transactions };
   return transactions;
+}
+
+/** Filter the transaction set by search / status / risk (no pagination). */
+export function filterTransactions(query: TransactionsQuery = {}): Transaction[] {
+  const search = (query.search ?? "").toLowerCase().trim();
+  const status = query.status ?? "all";
+  const risk = query.risk ?? "all";
+  return getMockTransactions().filter((t) => {
+    if (status !== "all" && t.status !== status) return false;
+    if (risk !== "all" && t.risk !== risk) return false;
+    if (search) {
+      const haystack = `${t.customer.name} ${t.reference} ${t.counterparty}`.toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
 }
 
 export function getMockStats(): DashboardStats {

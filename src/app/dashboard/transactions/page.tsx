@@ -8,6 +8,7 @@ import { TransactionsFilters } from "@/components/transactions/transactions-filt
 import { TransactionsTable } from "@/components/transactions/transactions-table";
 import { Pagination } from "@/components/transactions/pagination";
 import { TransactionDrawer } from "@/components/transactions/transaction-drawer";
+import { ExportButton } from "@/components/ui/export-button";
 import { useTransactions } from "@/hooks/use-transactions";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import type { RiskLevel, Transaction, TransactionStatus } from "@/lib/types";
@@ -87,7 +88,17 @@ export default function TransactionsPage() {
             Investigate flagged transfers, payments, and high-risk activity.
           </p>
         </div>
-        <LiveIndicator isFetching={isFetching} lastUpdated={dataUpdatedAt} />
+        <div className="flex items-center gap-3">
+          <ExportButton
+            dataset="transactions"
+            params={{
+              search: debouncedSearch,
+              status: filters.status,
+              risk: filters.risk,
+            }}
+          />
+          <LiveIndicator isFetching={isFetching} lastUpdated={dataUpdatedAt} />
+        </div>
       </div>
 
       <Card>

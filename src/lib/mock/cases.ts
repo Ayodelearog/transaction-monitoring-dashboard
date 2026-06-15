@@ -155,23 +155,14 @@ function touch(c: Case) {
 
 // ── Reads ────────────────────────────────────────────────────────────────
 
-export function listCases(query: CasesQuery = {}): PaginatedCases {
+/** Filter and sort the case queue (no pagination). */
+export function queryCases(query: CasesQuery = {}): CaseRecord[] {
   const { search = "", status = "all", priority = "all" } = query;
-  const page = Math.max(1, query.page ?? 1);
-  const pageSize = Math.max(1, Math.min(50, query.pageSize ?? 10));
   const term = search.toLowerCase().trim();
+  const order: Record<RiskLevel, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
-  const all = [...db().values()].map(join);
-
-  const counts: Record<CaseStatus, number> = {
-    open: 0,
-    investigating: 0,
-    escalated: 0,
-    closed: 0,
-  };
-  for (const c of all) counts[c.status]++;
-
-  const filtered = all
+  return [...db().values()]
+    .map(join)
     .filter((c) => {
       if (status !== "all" && c.status !== status) return false;
       if (priority !== "all" && c.priority !== priority) return false;
@@ -184,11 +175,24 @@ export function listCases(query: CasesQuery = {}): PaginatedCases {
     })
     // Highest priority first, then most recently updated.
     .sort((a, b) => {
-      const order: Record<RiskLevel, number> = { critical: 0, high: 1, medium: 2, low: 3 };
       if (order[a.priority] !== order[b.priority]) return order[a.priority] - order[b.priority];
       return +new Date(b.updatedAt) - +new Date(a.updatedAt);
     });
+}
 
+export function listCases(query: CasesQuery = {}): PaginatedCases {
+  const page = Math.max(1, query.page ?? 1);
+  const pageSize = Math.max(1, Math.min(50, query.pageSize ?? 10));
+
+  const counts: Record<CaseStatus, number> = {
+    open: 0,
+    investigating: 0,
+    escalated: 0,
+    closed: 0,
+  };
+  for (const c of db().values()) counts[c.status]++;
+
+  const filtered = queryCases(query);
   const start = (page - 1) * pageSize;
   return {
     data: filtered.slice(start, start + pageSize),
