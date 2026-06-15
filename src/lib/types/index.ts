@@ -14,6 +14,8 @@ export type TransactionType =
   | "payment"
   | "refund";
 
+export type KycStatus = "verified" | "pending" | "rejected";
+
 export interface Customer {
   id: string;
   name: string;
@@ -21,7 +23,7 @@ export interface Customer {
   phone: string;
   country: string;
   joinedAt: string;
-  kycStatus: "verified" | "pending" | "rejected";
+  kycStatus: KycStatus;
   riskScore: number;
 }
 
@@ -153,6 +155,40 @@ export interface PaginatedCases {
   pageSize: number;
   /** Total cases per status across the whole queue, for the KPI tiles. */
   counts: Record<CaseStatus, number>;
+}
+
+/** A customer enriched with portfolio aggregates and a KYC audit trail. */
+export interface CustomerRecord extends Customer {
+  riskLevel: RiskLevel;
+  transactionCount: number;
+  totalVolume: number;
+  flaggedCount: number;
+  openCases: number;
+  lastActivityAt: string;
+  kycAudit: ActivityEvent[];
+}
+
+/** Customer detail joined with their transactions and linked cases. */
+export interface CustomerDetail extends CustomerRecord {
+  transactions: Transaction[];
+  cases: Case[];
+}
+
+export interface CustomersQuery {
+  search?: string;
+  kyc?: KycStatus | "all";
+  risk?: RiskLevel | "all";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedCustomers {
+  data: CustomerRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  /** Total customers per KYC status across the whole base, for the KPI tiles. */
+  counts: Record<KycStatus, number>;
 }
 
 export interface User {

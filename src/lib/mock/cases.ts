@@ -201,6 +201,13 @@ export function getCase(id: string): CaseRecord | null {
   return c ? join(c) : null;
 }
 
+/** All cases opened against a given customer's transactions. */
+export function getCasesByCustomer(customerId: string): CaseRecord[] {
+  return [...db().values()]
+    .map(join)
+    .filter((c) => c.transaction.customer.id === customerId);
+}
+
 // ── Mutations ──────────────────────────────────────────────────────────────
 
 export function assignCase(id: string, assignee: string | null, actor: string) {

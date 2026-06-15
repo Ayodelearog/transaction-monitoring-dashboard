@@ -1,6 +1,7 @@
 import type {
   CaseDisposition,
   CaseStatus,
+  KycStatus,
   RiskLevel,
   TransactionStatus,
 } from "@/lib/types";
@@ -63,4 +64,16 @@ export const dispositionLabel: Record<CaseDisposition, string> = {
   cleared: "Cleared",
   false_positive: "False positive",
   sar_filed: "SAR filed",
+};
+
+export const kycTone: Record<KycStatus, Tone> = {
+  verified: "success",
+  pending: "warning",
+  rejected: "danger",
+};
+
+export const kycLabel: Record<KycStatus, string> = {
+  verified: "Verified",
+  pending: "Pending",
+  rejected: "Rejected",
 };

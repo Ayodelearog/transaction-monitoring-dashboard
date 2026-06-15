@@ -110,7 +110,7 @@ const CHANNELS = ["web", "mobile", "api", "branch"] as const;
 
 const ANCHOR_DATE = new Date("2026-05-12T12:00:00Z").getTime();
 
-function riskFromScore(score: number): RiskLevel {
+export function riskFromScore(score: number): RiskLevel {
   if (score >= 85) return "critical";
   if (score >= 65) return "high";
   if (score >= 40) return "medium";

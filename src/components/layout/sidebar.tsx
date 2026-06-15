@@ -18,7 +18,7 @@ const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/transactions", label: "Transactions", icon: Receipt },
   { href: "/dashboard/alerts", label: "Alerts", icon: ShieldAlert },
-  { href: "#", label: "Customers", icon: Users, disabled: true },
+  { href: "/dashboard/customers", label: "Customers", icon: Users },
   { href: "#", label: "Settings", icon: Settings, disabled: true },
 ];
 
