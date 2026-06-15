@@ -91,6 +91,70 @@ export interface TransactionsQuery {
   pageSize?: number;
 }
 
+export type CaseStatus = "open" | "investigating" | "escalated" | "closed";
+
+export type CaseDisposition =
+  | "unreviewed"
+  | "cleared"
+  | "false_positive"
+  | "sar_filed";
+
+export interface CaseNote {
+  id: string;
+  author: string;
+  body: string;
+  at: string;
+}
+
+export interface SarReport {
+  id: string;
+  narrative: string;
+  draftedBy: "ai" | "analyst";
+  status: "draft" | "approved";
+  createdAt: string;
+}
+
+/** A compliance case opened against a suspicious transaction. */
+export interface Case {
+  id: string;
+  transactionId: string;
+  reference: string;
+  title: string;
+  summary: string;
+  status: CaseStatus;
+  /** Mirrors the originating transaction's risk level. */
+  priority: RiskLevel;
+  disposition: CaseDisposition;
+  assignee: string | null;
+  notes: CaseNote[];
+  audit: ActivityEvent[];
+  sar: SarReport | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A case joined with its originating transaction, as served by the API. */
+export interface CaseRecord extends Case {
+  transaction: Transaction;
+}
+
+export interface CasesQuery {
+  search?: string;
+  status?: CaseStatus | "all";
+  priority?: RiskLevel | "all";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedCases {
+  data: CaseRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  /** Total cases per status across the whole queue, for the KPI tiles. */
+  counts: Record<CaseStatus, number>;
+}
+
 export interface User {
   id: string;
   name: string;

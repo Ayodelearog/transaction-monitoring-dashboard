@@ -4,6 +4,8 @@ A responsive transaction monitoring console for compliance analysts. Built as th
 
 The app simulates a live AML / fraud monitoring workspace: KPI metrics, weekly volume, risk distribution, and a searchable, filterable transactions table with a detail drawer that breaks down customer, risk, history, and activity timeline.
 
+It also ships a full **alert / case-management workflow** — a triage queue of compliance cases derived from flagged and high-risk transactions, each with status workflow, assignment, investigator notes, an audit trail, and SAR (Suspicious Activity Report) escalation. An **AI assistant (Claude, via the Vercel AI Gateway)** drafts the risk assessment and the SAR narrative, streaming token-by-token, with the analyst keeping the final decision.
+
 ---
 
 ## Demo credentials
@@ -25,6 +27,7 @@ Password: Compliance123!
 | Language             | **TypeScript** (strict)                                  |
 | Styling              | **Tailwind CSS v4** with HSL design tokens               |
 | Server state         | **TanStack Query v5** (polling, caching, devtools)       |
+| AI                   | **Vercel AI SDK** (`ai`) + **AI Gateway** → **Claude**, streamed |
 | Client / auth state  | **Zustand** with `persist` middleware (localStorage)     |
 | Forms & validation   | **react-hook-form** + **Zod** (`@hookform/resolvers`)    |
 | Charts               | **Recharts** (Area chart with gradients)                 |
@@ -42,22 +45,25 @@ Password: Compliance123!
 # 1. Install
 npm install
 
-# 2. Dev server (http://localhost:3000)
+# 2. (Optional) enable the AI features — copy the example env and add a key
+cp .env.example .env.local   # then set AI_GATEWAY_API_KEY
+
+# 3. Dev server (http://localhost:3000)
 npm run dev
 
-# 3. Production build + serve
+# 4. Production build + serve
 npm run build && npm start
 
-# 4. Run the test suite (one-shot)
+# 5. Run the test suite (one-shot)
 npm test
 
-# 5. Tests in watch mode
+# 6. Tests in watch mode
 npm run test:watch
 
-# 6. Typecheck
+# 7. Typecheck
 npm run typecheck
 
-# 7. Lint
+# 8. Lint
 npm run lint
 ```
 
@@ -98,14 +104,16 @@ src/
 │   ├── layout/                         # Sidebar, Topbar, ThemeToggle, AppShell
 │   ├── dashboard/                      # KpiCard, VolumeChart, RiskDistribution, LiveIndicator
 │   ├── transactions/                   # Table, Filters, Pagination, Drawer
+│   ├── alerts/                         # Queue table, filters, case drawer, AI panels
 │   ├── auth/                           # LoginForm
 │   └── providers/                      # ThemeProvider
 │
-├── hooks/                              # use-stats, use-transactions, use-debounced-value
+├── hooks/                              # use-stats, use-transactions, use-alerts, use-streaming, ...
 │
 ├── lib/
-│   ├── api/                            # Typed fetch wrappers (auth, transactions)
-│   ├── mock/                           # Seeded RNG + deterministic data generator
+│   ├── ai/                             # Claude prompts + context builder (AI Gateway)
+│   ├── api/                            # Typed fetch wrappers (auth, transactions, alerts)
+│   ├── mock/                           # Seeded RNG, data generator, mutable case store
 │   ├── query/                          # QueryClientProvider + query-key registry
 │   ├── store/                          # Zustand auth store
 │   ├── types/                          # Shared domain types
@@ -174,14 +182,16 @@ Theming uses **HSL CSS variables** set on `:root` and `.dark`, exposed to Tailwi
 
 ## Testing
 
-Twenty unit tests across five files cover the highest-leverage units:
+Thirty-three unit tests across seven files cover the highest-leverage units:
 
 | File                                          | Covers                                                          |
 | --------------------------------------------- | --------------------------------------------------------------- |
 | `lib/utils.test.ts`                           | `cn` / `tailwind-merge` behavior, currency / number / initials  |
 | `lib/mock/seed.test.ts`                       | Deterministic RNG + stats payload coherence                     |
+| `lib/mock/cases.test.ts`                      | Case derivation, queue counts/sorting/filtering, mutations      |
 | `hooks/use-debounced-value.test.ts`           | Debounce behavior with fake timers                              |
 | `components/ui/badge.test.tsx`                | Tone classes, dot indicator                                     |
+| `components/ui/markdown.test.tsx`             | Headings, lists, inline bold, blank-line handling               |
 | `components/transactions/pagination.test.tsx` | Range rendering, disabled boundaries, click handlers            |
 
 ```bash
@@ -202,6 +212,14 @@ All endpoints live under `src/app/api/` and add 250–700ms of artificial latenc
 | GET    | `/api/stats`                   | Dashboard KPIs + weekly volume + risk distribution     |
 | GET    | `/api/transactions`            | Paginated, searchable, filterable list                 |
 | GET    | `/api/transactions/[id]`       | Single transaction with full timeline                  |
+| GET    | `/api/alerts`                  | Paginated case queue + per-status counts               |
+| GET    | `/api/alerts/[id]`             | Single case joined with its transaction                |
+| PATCH  | `/api/alerts/[id]`             | Update case status and/or assignee                     |
+| POST   | `/api/alerts/[id]/notes`       | Append an investigator note                            |
+| POST   | `/api/alerts/[id]/escalate`    | Escalate the case to SAR                               |
+| POST   | `/api/alerts/[id]/sar`         | Save / approve a SAR narrative                         |
+| POST   | `/api/alerts/[id]/analyze`     | **Streams** an AI risk assessment (Claude)             |
+| POST   | `/api/alerts/[id]/sar/draft`   | **Streams** an AI-drafted SAR narrative (Claude)       |
 
 ### `/api/transactions` query parameters
 
@@ -220,6 +238,8 @@ All endpoints live under `src/app/api/` and add 250–700ms of artificial latenc
 - **Dark mode** with system / manual toggle (animated segmented control)
 - **Animations & micro-interactions** — page-load fades, layout-id pill on theme toggle & nav, animated SVG risk meter, framer-staggered list reveals
 - **Polling simulation** — TanStack Query `refetchInterval` + drifting mock stats + live indicator
+- **Alert / case management** — a triage queue with status workflow, assignment, notes, audit trail, and SAR escalation. See [Alerts & AI](#alerts--ai-assisted-case-management) below.
+- **AI-assisted triage (Claude)** — streaming risk assessments and SAR narratives via the Vercel AI SDK + AI Gateway.
 - **Global search with command-palette UX** — `⌘K` / `Ctrl K` from anywhere, debounced dropdown with top 5 matches (avatar, customer, reference, badges, amount), keyboard navigation (↑/↓, Enter, Esc), substring highlighting, and a "View all results" fallback that pushes to the transactions page with the filter applied. See [Global search](#global-search) below.
 - **Unit tests** — Vitest + RTL, 20 tests across 5 files
 - **Docker setup** — multi-stage build, standalone output, non-root user
@@ -237,4 +257,36 @@ The header search ([src/components/layout/global-search.tsx](src/components/layo
 - The footer row "View all N results for *foo*" navigates to `/dashboard/transactions?search=<q>` for the full filterable table.
 - The dropdown's `useQuery` shares its cache key (`queryKeys.transactions(...)`) with the table, so navigating from the header to the transactions page is a cache hit — no second fetch.
 
+---
+
+## Alerts & AI-assisted case management
+
+The **Alerts** workspace ([src/app/dashboard/alerts/page.tsx](src/app/dashboard/alerts/page.tsx)) turns the monitoring dashboard into a working investigations tool.
+
+### The queue
+
+- Cases are **derived** from the transaction data: any flagged / under-review transaction, or anything high- or critical-risk, opens a case ([src/lib/mock/cases.ts](src/lib/mock/cases.ts)).
+- The queue is sorted by priority, filterable by status and priority, searchable, and paginated. Four KPI tiles count cases by status (Open / Investigating / Escalated / Closed), and the sidebar **Alerts** badge shows the live count of active cases.
+
+### The case view
+
+Opening a case (drawer, [src/components/alerts/case-drawer.tsx](src/components/alerts/case-drawer.tsx)) exposes the full analyst workflow:
+
+- **Status workflow** — `open → investigating → escalated → closed`, plus assignment to an analyst.
+- **Escalate to SAR** — one click flips the case to escalated and marks the disposition `sar_filed`.
+- **Investigator notes** — free-text notes, each appended to the case.
+- **Audit trail** — every status change, assignment, note, and SAR action is recorded as an immutable timeline entry.
+
+Mutations go through a small **mutable in-memory store** so actions persist for the lifetime of the dev server (the brief allowed mocked data; this keeps the demo stateful without a database). TanStack Query mutations write the updated case back into the cache and invalidate the queue, so the UI stays in sync.
+
+### The AI layer
+
+Two features call **Claude through the Vercel AI Gateway** ([src/lib/ai/triage.ts](src/lib/ai/triage.ts)), both **streamed token-by-token**:
+
+- **AI triage assistant** (`/api/alerts/[id]/analyze`) — reads the transaction, customer, risk indicators, history, and notes, then drafts a structured risk assessment with a recommended disposition.
+- **AI SAR drafting** (`/api/alerts/[id]/sar/draft`) — drafts the regulatory narrative, which the analyst can edit before saving a draft or approving the filing.
+
+Both routes use `streamText(...).toTextStreamResponse()`; the client reads the response body as a stream ([src/hooks/use-streaming.ts](src/hooks/use-streaming.ts)) and renders it live through a tiny dependency-free markdown component. The analyst always makes the final decision — the AI assists, it doesn't decide.
+
+> **No key? Still works.** Without `AI_GATEWAY_API_KEY` the app runs normally; only the two AI actions return a friendly "AI is not configured" message (the routes guard on credentials and respond `503`). See [.env.example](.env.example).
 

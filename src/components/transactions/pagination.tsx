@@ -8,9 +8,16 @@ interface PaginationProps {
   pageSize: number;
   total: number;
   onPageChange: (page: number) => void;
+  noun?: string;
 }
 
-export function Pagination({ page, pageSize, total, onPageChange }: PaginationProps) {
+export function Pagination({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+  noun = "transactions",
+}: PaginationProps) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
@@ -33,7 +40,7 @@ export function Pagination({ page, pageSize, total, onPageChange }: PaginationPr
       <p className="text-xs text-muted-foreground">
         Showing <span className="font-semibold text-foreground">{start}</span>–
         <span className="font-semibold text-foreground">{end}</span> of{" "}
-        <span className="font-semibold text-foreground">{total}</span> transactions
+        <span className="font-semibold text-foreground">{total}</span> {noun}
       </p>
       <div className="flex items-center gap-1">
         <PageButton
