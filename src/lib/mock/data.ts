@@ -180,8 +180,14 @@ function buildActivity(rng: SeededRng, transactionRef: string): ActivityEvent[] 
   return events;
 }
 
-function generateTransaction(index: number, rng: SeededRng): Transaction {
-  const customer = buildCustomer(rng, index);
+function generateTransaction(
+  index: number,
+  rng: SeededRng,
+  pool: Customer[],
+): Transaction {
+  // Draw from a shared customer pool so customers recur across transactions —
+  // this is what makes per-customer aggregates and velocity rules meaningful.
+  const customer = rng.pick(pool);
   const score = rng.int(1, 99);
   const risk = riskFromScore(score);
   const status = (() => {
@@ -220,7 +226,12 @@ let cache: { generatedAt: number; transactions: Transaction[] } | null = null;
 export function getMockTransactions(): Transaction[] {
   if (cache) return cache.transactions;
   const rng = new SeededRng(424242);
-  const transactions = Array.from({ length: 84 }, (_, i) => generateTransaction(i, rng));
+  // ~36 customers across 84 transactions → an average of >2 each, so some
+  // customers cluster into high-velocity, multi-transaction profiles.
+  const pool = Array.from({ length: 36 }, (_, i) => buildCustomer(rng, i));
+  const transactions = Array.from({ length: 84 }, (_, i) =>
+    generateTransaction(i, rng, pool),
+  );
   cache = { generatedAt: Date.now(), transactions };
   return transactions;
 }
